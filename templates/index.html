@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Raman·AI — Mineral Analyzer</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/dark_theme.css') }}" rel="stylesheet">
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+</head>
+<body>
+
+<!-- ═══════════════════════════════ NAVBAR ═══════════════════════════════ -->
+<nav class="app-navbar">
+  <div class="nav-logo">
+    <i class="bi bi-gem" style="color:#fff"></i>
+  </div>
+  <span class="nav-title">Raman·AI</span>
+  <span class="nav-sub">Mineral Spectroscopy Analyzer</span>
+
+  <div class="nav-badges">
+    <span id="db-badge" class="status-pill loading">
+      <span class="dot"></span>
+      <span id="db-text">Loading…</span>
+    </span>
+    <span id="cnn-badge" class="status-pill offline">
+      <span class="dot"></span>
+      <span id="cnn-text">CNN: not trained</span>
+    </span>
+    <span id="rf-badge" class="status-pill offline">
+      <span class="dot"></span>
+      <span id="rf-text">RF: not trained</span>
+    </span>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════ BODY ════════════════════════════════ -->
+<div class="app-body">
+
+  <!-- ─────────────── SIDEBAR ─────────────── -->
+  <aside class="sidebar">
+
+    <!-- Upload -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="icon"><i class="bi bi-cloud-arrow-up"></i></span>
+        Upload Spectrum
+      </div>
+      <div class="panel-body">
+        <div id="drop-zone" class="drop-zone"
+             onclick="document.getElementById('file-input').click()">
+          <div class="upload-icon"><i class="bi bi-file-earmark-spreadsheet"></i></div>
+          <div class="dz-title">Drop your CSV here</div>
+          <div class="dz-sub">or click to browse</div>
+          <div class="dz-hint">Two columns: wavenumber, intensity</div>
+        </div>
+        <input type="file" id="file-input" accept=".csv,.txt" style="display:none">
+        <div id="file-info" class="file-info-strip d-none">
+          <i class="bi bi-check-circle-fill"></i>
+          <span id="file-name" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+        </div>
+        <div id="upload-error" class="alert-danger d-none"></div>
+      </div>
+    </div>
+
+    <!-- Mode -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="icon"><i class="bi bi-sliders2"></i></span>
+        Analysis Mode
+      </div>
+      <div class="panel-body">
+        <div class="mode-group">
+          <input type="radio" class="btn-check" name="mode" id="mode-auto" value="auto" autocomplete="off" checked>
+          <label class="mode-pill" for="mode-auto">
+            <i class="bi bi-lightning-fill"></i> Auto
+          </label>
+
+          <input type="radio" class="btn-check" name="mode" id="mode-matching" value="matching" autocomplete="off">
+          <label class="mode-pill" for="mode-matching">
+            <i class="bi bi-search"></i> Match
+          </label>
+
+          <input type="radio" class="btn-check" name="mode" id="mode-cnn" value="cnn" autocomplete="off" disabled>
+          <label class="mode-pill disabled" for="mode-cnn">
+            <i class="bi bi-cpu-fill"></i> CNN
+          </label>
+
+          <input type="radio" class="btn-check" name="mode" id="mode-rf" value="rf" autocomplete="off" disabled>
+          <label class="mode-pill disabled" for="mode-rf">
+            <i class="bi bi-tree-fill"></i> RF
+          </label>
+        </div>
+        <div id="mode-hints" class="cnn-hint-text" style="text-align:left">
+          <span id="cnn-hint" style="display:block">CNN: <code>python training/train_cnn.py</code></span>
+          <span id="rf-hint"  style="display:block; margin-top:2px">RF: <code>python training/train_rf.py</code></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Preprocessing Display Toggles -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="icon"><i class="bi bi-activity"></i></span>
+        Display Layers
+      </div>
+      <div class="panel-body" style="padding:0.6rem 1rem">
+
+        <label class="prep-toggle">
+          <span class="prep-dot" style="background:#7c9cb5"></span>
+          <span class="prep-label">Raw spectrum</span>
+          <div class="toggle-switch">
+            <input type="checkbox" id="show-raw" checked>
+            <span class="toggle-track"></span>
+          </div>
+        </label>
+
+        <label class="prep-toggle">
+          <span class="prep-dot" style="background:#4d7a58"></span>
+          <span class="prep-label">Processed (S-G + ALS)</span>
+          <div class="toggle-switch">
+            <input type="checkbox" id="show-processed" checked>
+            <span class="toggle-track"></span>
+          </div>
+        </label>
+
+        <label class="prep-toggle">
+          <span class="prep-dot" style="background:#8a4040"></span>
+          <span class="prep-label">Baseline (ALS)</span>
+          <div class="toggle-switch">
+            <input type="checkbox" id="show-baseline">
+            <span class="toggle-track"></span>
+          </div>
+        </label>
+
+        <label class="prep-toggle">
+          <span class="prep-dot" style="background:#a06030"></span>
+          <span class="prep-label">Reference overlays</span>
+          <div class="toggle-switch">
+            <input type="checkbox" id="show-refs" checked>
+            <span class="toggle-track"></span>
+          </div>
+        </label>
+
+      </div>
+    </div>
+
+    <!-- Samples -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="icon"><i class="bi bi-collection"></i></span>
+        Try Sample Spectra
+      </div>
+      <div class="panel-body" style="display:flex;flex-direction:column;gap:0.4rem">
+        <button class="sample-btn" onclick="loadSample('quartz')">
+          <span class="sample-dot" style="background:#74b9ff"></span>
+          Quartz
+          <span class="sample-formula">SiO₂</span>
+        </button>
+        <button class="sample-btn" onclick="loadSample('calcite')">
+          <span class="sample-dot" style="background:#a29bfe"></span>
+          Calcite
+          <span class="sample-formula">CaCO₃</span>
+        </button>
+        <button class="sample-btn" onclick="loadSample('pyrite')">
+          <span class="sample-dot" style="background:#fdcb6e"></span>
+          Pyrite
+          <span class="sample-formula">FeS₂</span>
+        </button>
+        <button class="sample-btn" onclick="loadSample('mixture')">
+          <span class="sample-dot" style="background:linear-gradient(135deg,#74b9ff,#a29bfe)"></span>
+          Quartz + Calcite mix
+          <span class="sample-formula">mix</span>
+        </button>
+      </div>
+    </div>
+
+  </aside><!-- /sidebar -->
+
+  <!-- ─────────────── MAIN ─────────────── -->
+  <main class="main-content">
+
+    <!-- Spectrum Chart -->
+    <div class="panel" id="chart-panel">
+      <div class="panel-header">
+        <span class="icon"><i class="bi bi-graph-up-arrow"></i></span>
+        Spectrum
+        <span id="spectrum-filename" style="font-size:0.72rem;color:var(--text-muted);font-weight:400;margin-left:0.25rem;text-transform:none;letter-spacing:0"></span>
+        <div class="header-right" style="display:flex;align-items:center;gap:0.5rem">
+          <div id="plot-spinner" class="spinner-border spinner-border-sm spin-accent d-none" role="status" style="width:14px;height:14px;border-width:2px"></div>
+        </div>
+      </div>
+      <div class="chart-wrapper" id="chart-wrapper">
+        <!-- Scan line (shown during analysis) -->
+        <div id="scan-line" class="scan-line" style="display:none"></div>
+
+        <!-- Plot -->
+        <div id="spectrum-plot" style="height:380px; background:transparent;"></div>
+
+        <!-- Empty state -->
+        <div id="plot-placeholder" class="plot-empty">
+          <div class="plot-empty-icon"><i class="bi bi-graph-up"></i></div>
+          <svg class="plot-empty-waveform" viewBox="0 0 200 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <polyline points="0,20 15,20 20,10 25,30 30,20 50,20 55,5 58,2 61,5 65,20 80,20 85,15 90,25 95,20 120,20 125,8 130,32 135,20 160,20 165,18 170,22 175,20 200,20"
+              stroke="#7c5c3e" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+          </svg>
+          <div class="plot-empty-text">Upload a spectrum to begin analysis</div>
+          <div class="plot-empty-hint">CSV with wavenumber and intensity columns</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results (hidden until analysis runs) -->
+    <div id="results-section" class="d-none">
+      <div class="results-grid">
+
+        <!-- Mineral Matches -->
+        <div class="panel">
+          <div class="panel-header">
+            <span class="icon"><i class="bi bi-stars"></i></span>
+            Identification
+            <div class="header-right" style="display:flex;align-items:center;gap:0.4rem">
+              <span id="mode-used-badge" class="header-badge matching">Spectral Match</span>
+              <button class="icon-btn" id="btn-reanalyze">
+                <i class="bi bi-arrow-clockwise"></i>
+              </button>
+            </div>
+          </div>
+          <div class="panel-body" id="matches-container">
+            <!-- injected by confidence.js -->
+          </div>
+        </div>
+
+        <!-- Mixture Analysis -->
+        <div class="panel">
+          <div class="panel-header">
+            <span class="icon"><i class="bi bi-pie-chart"></i></span>
+            Composition
+            <div class="header-right">
+              <span id="mixture-badge" class="header-badge">—</span>
+            </div>
+          </div>
+          <div class="panel-body" id="mixture-container">
+            <div style="color:var(--text-muted);font-size:0.78rem">
+              <div class="skeleton skeleton-line w-80"></div>
+              <div class="skeleton skeleton-line w-60"></div>
+              <div class="skeleton skeleton-line w-40"></div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /results-grid -->
+    </div>
+
+  </main><!-- /main-content -->
+</div><!-- /app-body -->
+
+<!-- Toast -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+  <div id="app-toast" class="toast app-toast align-items-center border-0" role="alert" aria-live="assertive">
+    <div class="d-flex align-items-center gap-2 px-3 py-2">
+      <i id="toast-icon" class="bi bi-info-circle" style="color:var(--accent)"></i>
+      <div class="toast-body p-0" id="toast-msg" style="font-size:0.82rem"></div>
+      <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="toast" style="font-size:0.65rem"></button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{{ url_for('static', filename='js/plot.js') }}"></script>
+<script src="{{ url_for('static', filename='js/confidence.js') }}"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

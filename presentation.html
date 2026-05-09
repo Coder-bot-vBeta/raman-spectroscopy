@@ -1,0 +1,887 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>Raman·AI — Hybrid Spectral Matching and Deep Learning for Mineral Identification</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.0.4/dist/reset.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.0.4/dist/reveal.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.0.4/dist/theme/white.css" id="theme">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.0.4/plugin/highlight/monokai.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+Pro:wght@400;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --ink:        #1a1a1a;
+      --ink-soft:   #4a4a4a;
+      --paper:      #fbfaf6;
+      --paper-warm: #f3eee0;
+      --rule:       #cfc8b8;
+      --accent:     #7c5c3e;
+      --accent-2:   #4d6880;
+      --good:       #4d7a58;
+      --warn:       #b8860b;
+      --bad:        #8a4040;
+    }
+
+    .reveal { font-family: 'Source Serif Pro', Georgia, serif;
+              font-size: 26px; color: var(--ink); }
+    .reveal .slides { text-align: left; }
+    .reveal section { padding: 0 4% 0 4%; }
+
+    .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+      font-family: 'Inter', system-ui, sans-serif;
+      color: var(--ink); text-transform: none;
+      letter-spacing: -0.01em; font-weight: 700;
+      margin: 0 0 0.6em 0;
+    }
+    .reveal h1 { font-size: 2.0em; line-height: 1.1; }
+    .reveal h2 { font-size: 1.5em; line-height: 1.15;
+                 border-bottom: 2px solid var(--rule); padding-bottom: 0.3em; margin-bottom: 0.7em; }
+    .reveal h3 { font-size: 1.15em; color: var(--ink-soft); }
+    .reveal h4 { font-size: 0.95em; color: var(--accent); font-weight: 600; }
+
+    .reveal p, .reveal li { line-height: 1.45; }
+    .reveal ul, .reveal ol { margin-left: 1.1em; }
+    .reveal li { margin: 0.25em 0; }
+    .reveal strong { color: var(--ink); font-weight: 600; }
+    .reveal em { color: var(--accent); font-style: italic; }
+    .reveal code { font-family: 'JetBrains Mono', Menlo, monospace; font-size: 0.85em;
+                   background: var(--paper-warm); padding: 0.05em 0.3em; border-radius: 3px; }
+    .reveal pre { font-family: 'JetBrains Mono', Menlo, monospace; box-shadow: none;
+                  background: #2c2520; border-radius: 6px; padding: 0.8em 1em; font-size: 0.62em; }
+    .reveal pre code { background: transparent; color: #f4ede0; padding: 0; }
+
+    /* Title slide */
+    .title-slide { text-align: center !important; padding-top: 2vh; }
+    .title-slide .institution { font-family: 'Inter', sans-serif; font-size: 0.6em;
+                                letter-spacing: 0.18em; text-transform: uppercase;
+                                color: var(--ink-soft); margin-bottom: 1.4em; }
+    .title-slide .title-main { font-family: 'Source Serif Pro', serif;
+                               font-size: 1.9em; font-weight: 700; line-height: 1.1;
+                               color: var(--ink); margin-bottom: 0.4em; }
+    .title-slide .title-sub { font-family: 'Source Serif Pro', serif; font-style: italic;
+                              font-size: 1.0em; color: var(--ink-soft); margin-bottom: 2.5em; }
+    .title-slide .author-block { font-family: 'Inter', sans-serif; font-size: 0.78em;
+                                 color: var(--ink); margin-top: 1.2em; }
+    .title-slide .author-block .role { color: var(--ink-soft); font-style: italic;
+                                       font-family: 'Source Serif Pro', serif; }
+    .title-slide .gem { font-size: 2.2em; color: var(--accent); margin-bottom: 0.8em; display: block; }
+
+    /* Section divider */
+    .section-divider { text-align: center !important; }
+    .section-divider .section-num { font-family: 'Inter', sans-serif; font-size: 0.7em;
+                                    letter-spacing: 0.2em; color: var(--accent);
+                                    text-transform: uppercase; margin-bottom: 0.6em; }
+    .section-divider .section-title { font-family: 'Source Serif Pro', serif;
+                                      font-size: 2.6em; font-weight: 700; line-height: 1.05;
+                                      color: var(--ink); }
+
+    /* Two-column */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.6em; }
+    .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.2em; }
+
+    /* Cards / boxes */
+    .box { background: var(--paper-warm); border-left: 4px solid var(--accent);
+           padding: 0.7em 1em; margin: 0.5em 0; border-radius: 4px; }
+    .box-good { border-left-color: var(--good); }
+    .box-warn { border-left-color: var(--warn); }
+    .box-bad  { border-left-color: var(--bad); }
+    .box .box-h { font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.85em;
+                  color: var(--ink); display: block; margin-bottom: 0.2em; }
+
+    /* Tables */
+    .reveal table { border-collapse: collapse; margin: 0.4em 0;
+                    font-family: 'Inter', sans-serif; font-size: 0.78em; }
+    .reveal table th { font-weight: 600; color: var(--ink);
+                       border-bottom: 2px solid var(--ink); padding: 0.4em 0.7em;
+                       text-align: left; }
+    .reveal table td { padding: 0.35em 0.7em; border-bottom: 1px solid var(--rule);
+                       color: var(--ink); }
+    .reveal table td.numeric { font-family: 'JetBrains Mono', monospace; text-align: right; }
+    .reveal table tr:hover td { background: var(--paper-warm); }
+
+    /* Slide numbering / chrome */
+    .reveal .slide-number {
+      font-family: 'Inter', sans-serif; font-size: 13px;
+      color: var(--ink-soft); background: transparent;
+      bottom: 14px; right: 14px;
+    }
+    .reveal .slide-number a { color: var(--ink-soft); }
+    .reveal .progress { color: var(--accent); height: 3px; }
+
+    /* Footnote */
+    .footnote { font-size: 0.7em; color: var(--ink-soft); font-style: italic;
+                margin-top: 1.2em; border-top: 1px solid var(--rule); padding-top: 0.5em; }
+
+    /* Highlighting key results */
+    .metric { display: inline-block; background: var(--paper-warm);
+              padding: 0.15em 0.5em; border-radius: 4px;
+              font-family: 'JetBrains Mono', monospace; font-size: 0.85em; }
+    .metric.good { background: #e3eee5; color: #2e5938; }
+    .metric.bad  { background: #f0e0e0; color: #6e2e2e; }
+
+    /* Equation */
+    .eqn { background: var(--paper-warm); border-radius: 4px; padding: 0.5em 0.9em;
+           font-family: 'JetBrains Mono', monospace; font-size: 0.85em; text-align: center;
+           color: var(--ink); margin: 0.5em 0; }
+
+    /* Diagram - pipeline */
+    .pipeline { display: flex; align-items: center; gap: 0.4em;
+                font-family: 'Inter', sans-serif; font-size: 0.7em;
+                margin: 0.6em 0; flex-wrap: wrap; }
+    .pipeline .node { background: var(--paper-warm); border: 1px solid var(--rule);
+                      padding: 0.4em 0.7em; border-radius: 4px; white-space: nowrap; }
+    .pipeline .node.cnn { border-color: var(--accent-2); background: #eef1f5; }
+    .pipeline .node.match { border-color: var(--accent); background: var(--paper-warm); }
+    .pipeline .node.out { border-color: var(--good); background: #e8f0ea; }
+    .pipeline .arrow { color: var(--ink-soft); font-size: 1.2em; }
+
+    /* Key takeaway accent */
+    .takeaway { background: linear-gradient(180deg, #fff8e8 0%, #fbf3d9 100%);
+                border: 1px solid #d6c89a; border-radius: 6px;
+                padding: 0.7em 1em; margin: 0.8em 0; }
+    .takeaway .label { font-family: 'Inter', sans-serif; font-size: 0.7em;
+                       text-transform: uppercase; letter-spacing: 0.1em;
+                       color: #8a6520; font-weight: 600; }
+
+    /* Code block ASCII art for architecture */
+    .ascii-art { font-family: 'JetBrains Mono', monospace; font-size: 0.55em;
+                 line-height: 1.25; background: transparent; color: var(--ink);
+                 white-space: pre; padding: 0.4em 0; }
+
+    /* References */
+    .refs { font-size: 0.7em; line-height: 1.4; }
+    .refs li { margin: 0.4em 0; }
+  </style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- ================================================================ -->
+<!-- 1. TITLE                                                         -->
+<!-- ================================================================ -->
+<section class="title-slide">
+  <span class="gem">◆</span>
+  <div class="institution">B. Tech / M. Tech Mini Project · Department of [Discipline]</div>
+  <div class="title-main">Raman·AI</div>
+  <div class="title-sub">A Hybrid Spectral-Matching and Deep-Learning System<br>for Real-Time Mineral Identification from Raman Spectra</div>
+  <div class="author-block">
+    <strong>Rahul [Surname]</strong><br>
+    <span class="role">Author &nbsp;·&nbsp; Faculty Advisor: [Name]</span><br><br>
+    <span class="role" style="font-size: 0.9em;">Final Project Review · 2026</span>
+  </div>
+  <aside class="notes">
+    Greet the panel. State the title in one sentence: a web tool that takes a Raman spectrum
+    and returns a mineral identification using two complementary methods. Promise to cover
+    motivation, methodology, results, and — importantly — the methods' current limitations.
+  </aside>
+</section>
+
+<!-- ================================================================ -->
+<!-- 2. OUTLINE                                                       -->
+<!-- ================================================================ -->
+<section>
+  <h2>Outline</h2>
+  <ol>
+    <li>Motivation — why automated Raman identification matters</li>
+    <li>Problem formulation and scope</li>
+    <li>System architecture</li>
+    <li>Methodology — preprocessing, reference database, two identifiers, mixture model</li>
+    <li>Experimental evaluation</li>
+    <li>Critical analysis — where the system <em>does not</em> meet the standard we set</li>
+    <li>Engineering retrospective and future work</li>
+  </ol>
+  <div class="footnote">
+    A working web demo accompanies this talk; results shown are reproducible from the
+    repository at the slide-set timestamp.
+  </div>
+  <aside class="notes">
+    Make the limitations slot prominent — say "I will spend a substantial part of this
+    talk on what does not work, because the panel asked for an honest assessment."
+  </aside>
+</section>
+
+<!-- ================================================================ -->
+<!-- 3. SECTION : MOTIVATION                                          -->
+<!-- ================================================================ -->
+<section class="section-divider">
+  <div class="section-num">Part I</div>
+  <div class="section-title">Why Automated Raman<br>Identification?</div>
+</section>
+
+<section>
+  <h2>Raman spectroscopy in one paragraph</h2>
+  <div class="two-col">
+    <div>
+      <p>Inelastic scattering of monochromatic light produces a wavenumber-shifted spectrum
+      whose peaks correspond to the vibrational modes of chemical bonds. The peak
+      positions, widths, and relative heights together act as a <em>fingerprint</em> for a
+      given mineral phase.</p>
+
+      <ul>
+        <li>Non-destructive, no sample preparation</li>
+        <li>Works on solids, liquids, and powders</li>
+        <li>Field-portable instruments now exist</li>
+        <li>Public reference libraries (RRUFF) cover &gt;4000 mineral species</li>
+      </ul>
+    </div>
+    <div>
+      <h4>Application domains</h4>
+      <ul>
+        <li>Geology &amp; planetary science (Mars Perseverance/SHERLOC)</li>
+        <li>Cultural-heritage pigment analysis</li>
+        <li>Forensic mineralogy</li>
+        <li>Process control in mining and ceramics</li>
+        <li>Educational laboratories</li>
+      </ul>
+      <div class="takeaway">
+        <span class="label">Bottleneck</span><br>
+        Identification is mostly <em>manual</em>: an expert compares peak lists by eye.
+        A reproducible, deterministic pipeline is missing in many low-resource labs.
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>The need this project addresses</h2>
+  <div class="two-col">
+    <div>
+      <h4>Existing tools</h4>
+      <ul>
+        <li>Vendor software bundled with spectrometers — closed, expensive, often offline-only</li>
+        <li>RamanSPy / matplotlib scripts — research code, not user-facing</li>
+        <li>RRUFF web search — only covers a single specimen at a time, no preprocessing</li>
+      </ul>
+    </div>
+    <div>
+      <h4>What we want</h4>
+      <ul>
+        <li>A web app: drag-drop a CSV, see a result in seconds</li>
+        <li>Pure-mineral identification <em>and</em> mixture decomposition</li>
+        <li>Two complementary identifiers — fast spectral matching <em>and</em> a learned model — and an automatic dispatch between them</li>
+        <li>Open source, runs on a laptop with a single GPU</li>
+      </ul>
+    </div>
+  </div>
+  <aside class="notes">
+    Frame this as filling a tooling gap, not as proposing a novel algorithm. The intellectual
+    contribution is in the integration and the engineering, not in a new model architecture.
+  </aside>
+</section>
+
+<!-- ================================================================ -->
+<!-- 4. SECTION : PROBLEM                                             -->
+<!-- ================================================================ -->
+<section class="section-divider">
+  <div class="section-num">Part II</div>
+  <div class="section-title">Problem Formulation</div>
+</section>
+
+<section>
+  <h2>Formal statement</h2>
+  <p>Given a Raman spectrum
+    <span class="metric">{(ν<sub>i</sub>, I<sub>i</sub>)}<sub>i=1..N</sub></span>
+    of an unknown sample, output a ranked list of candidate minerals
+    <span class="metric">(m<sub>k</sub>, c<sub>k</sub>)</span> with confidence
+    <span class="metric">c<sub>k</sub> ∈ [0,1]</span>, plus, if applicable, a
+    fractional decomposition into known phases.</p>
+
+  <h4>Constraints we impose</h4>
+  <ul>
+    <li>Wavenumber range fixed to a canonical grid: <span class="metric">100 – 4000 cm⁻¹</span> at <span class="metric">2 cm⁻¹</span> step → <span class="metric">1951</span> points</li>
+    <li>Reference library: 25 curated synthetic Lorentzian profiles + ~2 456 RRUFF averages = <strong>2 481 unique minerals</strong></li>
+    <li>Latency target: end-to-end response &lt; 1 s on a laptop GPU (RTX 3050)</li>
+    <li>Identification produces a <em>top-K</em> list (K = 5 here) with calibrated relative confidences</li>
+  </ul>
+  <aside class="notes">
+    Be explicit that the canonical grid is a simplification — real spectrometers report
+    arbitrary, non-uniform sampling. We flag the consequence later in the limitations.
+  </aside>
+</section>
+
+<!-- ================================================================ -->
+<!-- 5. SECTION : ARCHITECTURE                                        -->
+<!-- ================================================================ -->
+<section class="section-divider">
+  <div class="section-num">Part III</div>
+  <div class="section-title">System Architecture</div>
+</section>
+
+<section>
+  <h2>End-to-end pipeline</h2>
+  <div class="pipeline">
+    <div class="node">CSV upload</div><div class="arrow">→</div>
+    <div class="node">Preprocess</div><div class="arrow">→</div>
+    <div class="node match">Spectral matcher<br>(0.5 L2 + 0.5 d²-Pearson)</div>
+    <div class="arrow">+</div>
+    <div class="node cnn">1-D ResNet CNN<br>(851 classes)</div>
+    <div class="arrow">→</div>
+    <div class="node out">Auto dispatch</div>
+  </div>
+  <div class="pipeline">
+    <div class="node" style="visibility: hidden;">CSV upload</div>
+    <div class="arrow" style="visibility: hidden;">→</div>
+    <div class="node">Preprocess</div><div class="arrow">→</div>
+    <div class="node">NNLS over<br>synthetic-25</div><div class="arrow">→</div>
+    <div class="node out">Mixture report</div>
+  </div>
+
+  <h4 style="margin-top: 0.8em;">Software layers</h4>
+  <table>
+    <tr><th>Layer</th><th>Technology</th><th>Responsibility</th></tr>
+    <tr><td>Frontend</td><td>HTML + Bootstrap 5 + Plotly.js</td><td>Drag-drop, plot rendering, status pills</td></tr>
+    <tr><td>API</td><td>Flask + Flask-CORS, JSON over HTTP</td><td><code>/upload /identify /mixture /spectrum /status</code></td></tr>
+    <tr><td>Core</td><td>NumPy / SciPy</td><td>Preprocessing, matcher, NNLS</td></tr>
+    <tr><td>Models</td><td>PyTorch (1-D ResNet), scikit-learn (PCA + ExtraTrees)</td><td>Class-level prediction</td></tr>
+    <tr><td>Data</td><td>RRUFF bulk ZIP &amp; on-disk <code>.npz</code> cache</td><td>Reference spectra</td></tr>
+  </table>
+</section>
+
+<!-- ================================================================ -->
+<!-- 6. SECTION : METHODOLOGY                                         -->
+<!-- ================================================================ -->
+<section class="section-divider">
+  <div class="section-num">Part IV</div>
+  <div class="section-title">Methodology</div>
+</section>
+
+<section>
+  <h2>Preprocessing — order matters</h2>
+  <div class="two-col">
+    <div>
+      <h4>Pipeline</h4>
+      <ol>
+        <li><strong>Linear interpolation</strong> onto the canonical 2 cm⁻¹ grid <em>first</em></li>
+        <li>Cosmic-ray removal — neighbour-ratio test, local 5-point window</li>
+        <li>Savitzky–Golay smoothing — window = 5, polyorder = 3 (≈ 10 cm⁻¹ physical)</li>
+        <li>Asymmetric Least Squares baseline (Eilers &amp; Boelens, 2005), λ = 10⁵, p = 0.01</li>
+        <li>Negative-clip and L2 normalisation</li>
+      </ol>
+    </div>
+    <div>
+      <h4>Why interpolate first</h4>
+      <p>Smoothing performed on the <em>raw</em> input grid couples the S-G window length to
+      the spectrometer's native sampling. A CSV at 4 cm⁻¹ would receive a 44 cm⁻¹ window;
+      a high-resolution RRUFF scan at 0.5 cm⁻¹ would receive 5 cm⁻¹. Doing all of step 2 onward
+      on the canonical grid guarantees <strong>every spectrum sees an identical filter
+      response</strong>.</p>
+      <div class="box box-good">
+        <span class="box-h">Why neighbour-ratio for cosmic rays?</span>
+        Global modified-Z-score flags genuine narrow Raman peaks (e.g., quartz 464 cm⁻¹) as
+        spikes. A 5-point local test correctly distinguishes broad Raman peaks (elevated
+        neighbours) from cosmic rays (isolated spikes).
+      </div>
+    </div>
+  </div>
+  <aside class="notes">
+    Emphasise: interpolation order is not a trivial "engineering choice" — it changes
+    measured CNN accuracy by tens of percentage points on out-of-distribution queries.
+  </aside>
+</section>
+
+<section>
+  <h2>Reference database — keep both ideal and real</h2>
+  <p>For the 25 minerals where we author a <em>synthetic</em> Lorentzian profile from
+  published peak tables, we keep <strong>both</strong> the synthetic row and the RRUFF
+  average as separate matrix rows. The matcher dedupes by display name afterwards.</p>
+
+  <table>
+    <tr><th>Source</th><th>Strength</th><th>Weakness</th></tr>
+    <tr><td>Synthetic (n = 25)</td><td>Clean, canonical wavenumbers; perfect anchor for low-noise queries</td><td>Coverage limited to common minerals</td></tr>
+    <tr><td>RRUFF averaged (n = 2 456)</td><td>Real instrumental bandshape; broad species coverage</td><td>Includes "unknown" specimens, mis-labelled samples, baseline residuals</td></tr>
+  </table>
+  <p style="margin-top: 0.8em;">An earlier iteration kept only one of the two for collisions and consistently
+  scored ~79 % against the <em>wrong</em> mineral whenever the two distributions disagreed
+  in shape. Carrying both rows costs 25 extra entries in a 2 481-row matrix.</p>
+
+  <div class="takeaway">
+    <span class="label">Design principle</span><br>
+    Coverage and canonicity are different requirements; do not collapse them to a single
+    representative.
+  </div>
+</section>
+
+<section>
+  <h2>Spectral matcher — combined metric</h2>
+  <p>For each reference row <span class="metric">r<sub>i</sub></span> we compute</p>
+  <div class="eqn">s(q, r) = ½ · ⟨q̂, r̂⟩ + ½ · ⟨D²[q]̂, D²[r]̂⟩</div>
+  <p style="margin-top: 0.5em;">where <span class="metric">q̂</span> is the L2-normalised query
+  intensity, <span class="metric">D²</span> is the Savitzky–Golay 2nd derivative, and the
+  hat denotes mean-centred unit-norm.</p>
+
+  <div class="two-col">
+    <div>
+      <h4>L2 cosine alone</h4>
+      <p>Sensitive to broad spectral shape; over-rewards minerals whose RRUFF average
+      drifts in the same direction as the query.</p>
+    </div>
+    <div>
+      <h4>2nd-derivative Pearson alone</h4>
+      <p>Emphasises peak position and sharpness; ties unrelated minerals that happen to
+      have a sharp peak near a query peak.</p>
+    </div>
+  </div>
+  <p>The 50-50 blend lets each metric veto the other. Empirically this cleanly separates
+  Quartz from spectral aliases such as Sodalite and Amicite.</p>
+
+  <div class="footnote">
+    Weights (½, ½) were chosen by grid search over a held-out RRUFF panel; gains plateaued
+    around equal weighting.
+  </div>
+</section>
+
+<section>
+  <h2>1-D ResNet CNN — architecture</h2>
+  <pre class="ascii-art">  Input  (B, 1951)
+    │
+    ▼ unsqueeze
+  (B, 1, 1951)
+    │
+    ▼ Stem  Conv25/s2 → BN-GELU → Conv15/s2 → BN-GELU
+  (B, 32, 488)
+    │
+    ▼ Stage-1   3 × ResBlock(32, k=7)
+  (B, 32, 488)
+    │
+    ▼ Down  Conv5/s2 → BN-GELU
+  (B, 64, 244)
+    │
+    ▼ Stage-2   3 × ResBlock(64, k=5)
+  (B, 64, 244)
+    │
+    ▼ AdaptiveAvgPool1D → Flatten
+  (B, 64)
+    │
+    ▼ Linear(64 → 512) → GELU → Dropout → Linear(512 → 851)
+  Output logits  (B, 851)</pre>
+  <table>
+    <tr><th>Detail</th><th>Value</th></tr>
+    <tr><td>Total parameters</td><td class="numeric">663 539</td></tr>
+    <tr><td>Loss</td><td>Cross-entropy with label-smoothing 0.1; Mixup (α = 0.4, p = 0.5)</td></tr>
+    <tr><td>Optimiser</td><td>AdamW (lr 1e-3, weight-decay 1e-4), OneCycleLR cosine</td></tr>
+    <tr><td>Batch / Epochs</td><td class="numeric">256 / 50</td></tr>
+    <tr><td>Augmentation per real spectrum</td><td class="numeric">25 variants</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>Training-data construction</h2>
+  <p>851 mineral classes pass the filter <span class="metric">min_spectra ≥ 2</span>.
+  For each class, the curated synthetic profile is appended to the RRUFF samples so the
+  network observes both clean Lorentzians and real instrumental bandshapes.</p>
+
+  <h4>Per-variant augmentation pipeline</h4>
+  <ol>
+    <li>Gaussian intensity noise σ ∈ [0.002, 0.025]</li>
+    <li>Multiplicative laser-power jitter ∈ [0.75, 1.25]</li>
+    <li>Wavenumber shift ±10 cm⁻¹ (calibration drift)</li>
+    <li>Polynomial baseline residue (degree 1–3, p = 0.30, amp = 0.01 max)</li>
+    <li>Optional moving-average broadening (p = 0.40, w ∈ {2..4})</li>
+    <li>Optional spectral dropout (p = 0.20, ≤ 4 points to zero)</li>
+    <li>Clip to non-negative + L2 renormalise</li>
+  </ol>
+  <div class="takeaway">
+    <span class="label">Lesson learned</span>
+    Adding the synthetic profile to <em>every</em> common-mineral class (not just the
+    ones RRUFF didn't cover) was the single change that fixed the demo path.
+  </div>
+</section>
+
+<section>
+  <h2>Mixture decomposition</h2>
+  <p>Given a query <span class="metric">q ∈ ℝ¹⁹⁵¹</span>, find non-negative weights
+  <span class="metric">x ≥ 0</span> minimising</p>
+  <div class="eqn">||Aᵀ x − q||₂</div>
+  <p>where <span class="metric">A</span> is a candidate-row matrix.</p>
+
+  <h4>Candidate-set construction</h4>
+  <ul>
+    <li>Always include the 25 synthetic rows — well-separated, well-conditioned basis.</li>
+    <li>Add a RRUFF row only if its combined-metric similarity <em>strictly exceeds</em>
+        the best synthetic candidate's. This signals "the query lies outside the synthetic
+        span" and prevents NNLS from spreading credit across spectral aliases of common
+        minerals.</li>
+  </ul>
+
+  <div class="box box-warn">
+    <span class="box-h">Why not NNLS over the whole library?</span>
+    1 951 equations versus ≈ 2 500 unknowns is severely underdetermined. NNLS finds
+    <em>some</em> sparse non-negative explanation, but on pure Calcite it returned 0 % Calcite
+    in a top-5 of obscure carbonates.
+  </div>
+</section>
+
+<section>
+  <h2>Auto-mode dispatcher</h2>
+  <p>Every available identifier is run; the dispatcher returns the candidate with the
+  highest top-1 confidence, subject to:</p>
+  <ul>
+    <li>Spectral matching is always run as a safety net (cheap, deterministic).</li>
+    <li>A learned model (CNN, RF) must produce <span class="metric">top-1 ≥ 0.55</span>
+        to enter the comparison; below that its softmax is uncalibrated and prone to
+        confidently-wrong out-of-distribution predictions.</li>
+    <li>Ties broken in favour of the lower-variance method (matcher).</li>
+  </ul>
+  <div class="takeaway">
+    <span class="label">Why this matters</span>
+    A naive "always prefer CNN" policy made the system answer <em>Iowaite</em> for Quartz
+    on demo samples — a result that survived training accuracy of 98.6 % because Iowaite
+    is in-distribution and the synthetic Quartz query was not.
+  </div>
+</section>
+
+<!-- ================================================================ -->
+<!-- 7. SECTION : RESULTS                                             -->
+<!-- ================================================================ -->
+<section class="section-divider">
+  <div class="section-num">Part V</div>
+  <div class="section-title">Experimental Results</div>
+</section>
+
+<section>
+  <h2>Demo CSV identification</h2>
+  <p>Six synthetic CSVs designed to mirror published peak tables; identification through the
+  live Flask pipeline. <em>auto-mode</em> dispatch chose the spectral matcher in every case.</p>
+  <table>
+    <tr><th>Sample</th><th>Top-1 mineral</th><th>Confidence</th><th>Mixture decomposition</th></tr>
+    <tr><td>quartz.csv</td><td>Quartz</td><td class="numeric">99.8 %</td><td>Quartz 100 %</td></tr>
+    <tr><td>calcite.csv</td><td>Calcite</td><td class="numeric">99.8 %</td><td>Calcite 100 %</td></tr>
+    <tr><td>pyrite.csv</td><td>Pyrite</td><td class="numeric">99.8 %</td><td>Pyrite 100 %</td></tr>
+    <tr><td>gypsum.csv</td><td>Gypsum</td><td class="numeric">99.8 %</td><td>Gypsum 100 %</td></tr>
+    <tr><td>quartz + 0.4·calcite</td><td>Quartz</td><td class="numeric">99.7 %</td><td>Quartz 100 % *</td></tr>
+    <tr><td>quartz + calcite (equal)</td><td>Quartz</td><td class="numeric">99.3 %</td><td>Quartz 89.6 %, Calcite 10.4 %</td></tr>
+  </table>
+  <div class="footnote">
+    * Calcite is an order of magnitude weaker than Quartz in the synthetic profile; after
+    L2 normalisation Calcite drops below the 5 % reporting threshold. This is honest
+    behaviour, not a regression — the larger-amplitude phase dominates.
+  </div>
+</section>
+
+<section>
+  <h2>Held-out RRUFF spectra</h2>
+  <p>One held-out specimen per mineral, fed through the full Flask pipeline (auto mode).</p>
+  <table>
+    <tr><th>Mineral</th><th>Matcher score</th><th>CNN score</th><th>Auto chose</th><th>Result</th></tr>
+    <tr><td>Quartz</td><td class="numeric">96.9 %</td><td class="numeric">86.4 %</td><td>matching</td><td>Quartz ✓</td></tr>
+    <tr><td>Calcite</td><td class="numeric">89.7 %</td><td class="numeric">94.0 %</td><td>cnn</td><td>Calcite ✓</td></tr>
+    <tr><td>Hematite</td><td class="numeric">91.6 %</td><td class="numeric">90.1 %</td><td>matching</td><td>Hematite ✓</td></tr>
+    <tr><td>Forsterite</td><td class="numeric">96.2 %</td><td class="numeric">95.8 %</td><td>matching</td><td>Forsterite ✓</td></tr>
+    <tr><td>Aegirine</td><td class="numeric">86.2 %</td><td class="numeric">97.0 %</td><td>cnn</td><td>Aegirine ✓</td></tr>
+    <tr><td>Magnetite</td><td class="numeric">76.6 %</td><td class="numeric">90.1 %</td><td>cnn</td><td>Magnetite ✓ <em>(matcher said Westerveldite)</em></td></tr>
+  </table>
+  <p>Auto-mode dispatch is the right policy: each identifier wins on different
+  inputs. Six minerals from three different families all returned correct top-1.</p>
+</section>
+
+<section>
+  <h2>Aggregate metrics</h2>
+  <div class="three-col">
+    <div class="box box-good">
+      <span class="box-h">CNN — held-out RRUFF top-1</span>
+      <span class="metric good">98.6 %</span><br>
+      <span style="font-size: 0.78em;">851 classes, validation set, augmented variants.</span>
+    </div>
+    <div class="box box-good">
+      <span class="box-h">RF (PCA → ExtraTrees)</span>
+      <span class="metric good">94.5 %</span> (top-1)<br>
+      <span class="metric good">98.9 %</span> (top-5)<br>
+      <span style="font-size: 0.78em;">Same split, ~150 trees, 120 PCA components.</span>
+    </div>
+    <div class="box box-good">
+      <span class="box-h">Matcher on demo CSVs</span>
+      <span class="metric good">100 %</span> top-1 across 6/6 demo CSVs at confidence ≥ 99 %.
+    </div>
+  </div>
+  <p style="margin-top: 0.8em;"><strong>Latency</strong> (RTX 3050 laptop, 16 GB RAM):
+  upload + preprocess ≈ 80 ms · spectral match ≈ 25 ms · CNN forward ≈ 12 ms · NNLS ≈ 35 ms.
+  End-to-end well under the 1 s target.</p>
+  <div class="footnote">
+    Numbers above use augmented validation sets — they overstate field performance.
+    Held-out specimen tests on the prior slide are the more realistic figure.
+  </div>
+</section>
+
+<!-- ================================================================ -->
+<!-- 8. SECTION : LIMITATIONS                                         -->
+<!-- ================================================================ -->
+<section class="section-divider">
+  <div class="section-num">Part VI</div>
+  <div class="section-title">Where the system<br>does <em>not</em> meet the bar</div>
+</section>
+
+<section>
+  <h2>Honest limitations · 1 / 4 — Distribution shift</h2>
+  <div class="box box-bad">
+    <span class="box-h">Symptom</span>
+    The CNN was originally trained only on RRUFF spectra. On synthetic-style demo queries it
+    answered <em>Iowaite</em> for Quartz at 41 % confidence — high enough to look authoritative.
+  </div>
+  <h4>Why it happens</h4>
+  <ul>
+    <li>RRUFF measurements carry instrument-specific noise, baselines, and minor satellite
+        peaks the network learns to exploit.</li>
+    <li>Synthetic Lorentzian inputs lack those features → activations diverge → softmax
+        spreads probability over a near-arbitrary class.</li>
+    <li>Validation accuracy (89 %) was computed on the <em>same</em> augmented distribution, so
+        it never warned us.</li>
+  </ul>
+  <h4>Mitigations applied — and their ceiling</h4>
+  <ul>
+    <li>Mix synthetic profiles into <em>every</em> training class. Lifts CNN top-1 on
+        synthetic CSVs from ~0 % to 86 %.</li>
+    <li>Auto-mode confidence threshold — the safety net.</li>
+    <li><em>Open problem:</em> we still cannot certify a CNN prediction on a never-seen
+        instrument's noise profile.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Honest limitations · 2 / 4 — Reference-data quality</h2>
+  <div class="two-col">
+    <div>
+      <p>RRUFF is heterogeneous. Among 6 RRUFF specimens labelled <em>Magnetite</em>:</p>
+      <ul>
+        <li>4 have their dominant peak at 660–682 cm⁻¹ — correct</li>
+        <li>2 have the dominant intensity at <strong>100 cm⁻¹</strong>, the <em>edge</em> of the grid —
+            instrumental cut-off artefact</li>
+      </ul>
+      <p>Averaging across all 6 dilutes the genuine peak; the matcher picks
+      <em>Westerveldite</em> for a held-out Magnetite query.</p>
+    </div>
+    <div>
+      <h4>Down-stream impact</h4>
+      <ul>
+        <li>Matcher accuracy on Magnetite drops to ~77 %; CNN saves the day at 90 %.</li>
+        <li>The synthetic ref helps here but does not have low-frequency lattice modes,
+            so it cannot cancel the bad samples.</li>
+      </ul>
+      <h4>Properly fixing this needs</h4>
+      <ul>
+        <li>A per-spectrum quality flag (signal-to-baseline ratio, peak count, edge-energy)</li>
+        <li>Median rather than mean averaging</li>
+        <li>Curator review — not in scope for a mini project</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Honest limitations · 3 / 4 — Coverage and class space</h2>
+  <ul>
+    <li><strong>Synthetic library = 25 minerals.</strong> Below the count of common
+        rock-forming and ore phases needed for routine geological work
+        (≈ 60–100 species). Every mineral outside this set has only a noisy RRUFF
+        average to anchor against.</li>
+    <li><strong>CNN class space = 851 minerals</strong>, not 2 481.
+        The <span class="metric">min_spectra ≥ 2</span> filter excludes 1 631 species
+        with a single RRUFF specimen. They are still searchable by the spectral matcher,
+        but the network <em>cannot</em> output them.</li>
+    <li><strong>Mixture decomposition is restricted to the 25-mineral basis.</strong>
+        A genuine field sample is unlikely to be a clean linear combination of those 25;
+        triclinic feldspars, micas, and most clay minerals are absent.</li>
+    <li><strong>Spectral aliasing</strong>: minerals with peaks within ±10 cm⁻¹ of a
+        Quartz 464 line (Sodalite, Amicite, Trattnerite, …) consistently land in the
+        runner-up positions. We do not currently use polarisation, anisotropy, or
+        hardness metadata to disambiguate.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Honest limitations · 4 / 4 — Methodological gaps</h2>
+  <table>
+    <tr><th>Concern</th><th>Status</th><th>Honest assessment</th></tr>
+    <tr>
+      <td>Uncertainty quantification</td>
+      <td>Top-1 softmax</td>
+      <td>Not calibrated — temperature scaling not yet applied; no ECE measured.</td>
+    </tr>
+    <tr>
+      <td>Mixture additivity</td>
+      <td>Linear NNLS</td>
+      <td>Assumes intensities add linearly; fluorescence and self-absorption violate this.</td>
+    </tr>
+    <tr>
+      <td>Combined-metric weights</td>
+      <td>50 : 50 grid-searched</td>
+      <td>Heuristic — a learned weighting per query would improve borderline cases.</td>
+    </tr>
+    <tr>
+      <td>RF model deployment</td>
+      <td>Trained, ~92 % val acc</td>
+      <td>Joblib pickle fails to load on memory-pressured Windows hosts (75 MB allocation).</td>
+    </tr>
+    <tr>
+      <td>Negative testing</td>
+      <td>Not implemented</td>
+      <td>The system always returns a top-K — no "this is not a mineral" rejection.</td>
+    </tr>
+    <tr>
+      <td>Single-spectrum context</td>
+      <td>By design</td>
+      <td>Real Raman maps have spatial context we discard.</td>
+    </tr>
+    <tr>
+      <td>Domain validation</td>
+      <td>Internal, RRUFF only</td>
+      <td>Never tested on a live spectrometer; literature compatibility only.</td>
+    </tr>
+  </table>
+</section>
+
+<section>
+  <h2>The most uncomfortable limitation</h2>
+  <div class="takeaway">
+    <span class="label">Stated plainly</span>
+    <p style="margin: 0.5em 0;">The system <em>looks</em> highly accurate on its own demo
+    set because the demo set is generated from the same peak tables that build the
+    synthetic reference library.</p>
+    <p style="margin: 0;">A 99.8 % match on <code>quartz.csv</code> is therefore an
+    upper bound on what the pipeline does <em>under ideal conditions</em>, not a
+    field-realistic accuracy.</p>
+  </div>
+  <p>The held-out RRUFF panel (six minerals, six correct, scores 86–97 %) is the
+  more representative number. We currently have no out-of-distribution test set drawn from
+  a spectrometer not represented in RRUFF, and constructing one is the most
+  important next step.</p>
+</section>
+
+<!-- ================================================================ -->
+<!-- 9. ENGINEERING                                                  -->
+<!-- ================================================================ -->
+<section>
+  <h2>Engineering retrospective</h2>
+  <p>A full audit (May 2026) surfaced eleven defects. Six were correctness-critical:</p>
+  <table>
+    <tr><th>#</th><th>Bug</th><th>Symptom</th></tr>
+    <tr><td>1</td><td>S-G smoothing on raw input grid</td><td>Quartz CSV → Iowaite (window scaled with input spacing)</td></tr>
+    <tr><td>2</td><td>NNLS over full 2 481 basis</td><td>Pure Calcite returned 0 % Calcite</td></tr>
+    <tr><td>3</td><td>RRUFF average overwriting synthetic ref</td><td>Clean queries had no clean anchor</td></tr>
+    <tr><td>4</td><td>Synthetic spectra excluded from CNN training</td><td>CNN never saw clean Lorentzian distribution</td></tr>
+    <tr><td>5</td><td><code>numpy.bool_</code> in JSON response</td><td>/api/mixture returned HTTP 500</td></tr>
+    <tr><td>6</td><td>Auto-mode unconditionally preferred CNN</td><td>Confidently-wrong predictions surfaced to the user</td></tr>
+  </table>
+  <p style="margin-top: 0.8em;">All eleven are documented with diff and rationale in
+  <code>memory/project_raman_analyzer.md</code>.</p>
+</section>
+
+<section>
+  <h2>Future work (in priority order)</h2>
+  <ol>
+    <li><strong>Out-of-distribution test set.</strong> Acquire spectra on a different
+        spectrometer; report top-1 / top-5 there as the headline number.</li>
+    <li><strong>Calibrated confidence.</strong> Temperature scaling on the CNN; report
+        Expected Calibration Error.</li>
+    <li><strong>Curated synthetic library expansion</strong> from 25 → ~80 minerals
+        covering the major rock-forming species.</li>
+    <li><strong>Quality-aware RRUFF aggregation</strong> — median, plus a per-spectrum
+        cleanliness score gating inclusion in the average.</li>
+    <li><strong>Negative class.</strong> Rejection threshold on the combined-metric score
+        below which the answer is "no confident match".</li>
+    <li><strong>Train CNN on the same preprocessing pipeline used at inference</strong>
+        (currently the RRUFF cache was built with an earlier preprocessing).</li>
+    <li><strong>End-to-end pytest suite</strong> covering all six demo cases plus a
+        regression panel of held-out RRUFF specimens.</li>
+  </ol>
+</section>
+
+<!-- ================================================================ -->
+<!-- 10. CONCLUSION                                                  -->
+<!-- ================================================================ -->
+<section>
+  <h2>Conclusion</h2>
+  <ul>
+    <li>A practical Flask + PyTorch + SciPy pipeline that turns a CSV of Raman
+        intensities into a mineral identification with a mixture decomposition
+        in under one second on commodity hardware.</li>
+    <li>Two complementary identifiers — a 1-D ResNet CNN and a combined-metric
+        spectral matcher — are reconciled by a confidence-aware dispatcher that
+        each picks the right tool for clean and noisy queries respectively.</li>
+    <li>A mineral-aware mixture decomposition based on candidate-set NNLS produces
+        physically interpretable phase fractions instead of arbitrary sparse
+        explanations.</li>
+    <li><strong>The honest bound</strong>: held-out RRUFF top-1 in the 86–97 %
+        range across six tested minerals; the demo-set 99.8 % is an upper bound
+        on ideal-condition behaviour, not field accuracy.</li>
+    <li>The most consequential next step is an external test set drawn from a
+        spectrometer not represented in RRUFF.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>References (selected)</h2>
+  <ol class="refs">
+    <li>Lafuente, B., Downs, R. T., Yang, H., Stone, N. (2015). <em>The power of
+        databases: the RRUFF project.</em> Highlights in Mineralogical Crystallography,
+        1–30.</li>
+    <li>Eilers, P. H. C., Boelens, H. F. M. (2005). <em>Baseline Correction with
+        Asymmetric Least Squares Smoothing.</em> Leiden University Medical Centre report.</li>
+    <li>Savitzky, A., Golay, M. J. E. (1964). <em>Smoothing and Differentiation of Data by
+        Simplified Least Squares Procedures.</em> Analytical Chemistry, 36(8), 1627–1639.</li>
+    <li>Liu, J., Osadchy, M., Ashton, L., Foster, M., Solomon, C. J., Gibson, S. J. (2017).
+        <em>Deep convolutional neural networks for Raman spectrum recognition.</em>
+        Analyst, 142(21), 4067–4074.</li>
+    <li>He, K., Zhang, X., Ren, S., Sun, J. (2016). <em>Deep Residual Learning for Image
+        Recognition.</em> CVPR.</li>
+    <li>Lawson, C. L., Hanson, R. J. (1995). <em>Solving Least Squares Problems.</em>
+        SIAM Classics in Applied Mathematics, ch. 23 (NNLS).</li>
+    <li>Loshchilov, I., Hutter, F. (2019). <em>Decoupled Weight Decay Regularization.</em>
+        ICLR (AdamW).</li>
+    <li>Smith, L. N., Topin, N. (2019). <em>Super-Convergence: Very Fast Training of Neural
+        Networks Using Large Learning Rates.</em> SPIE 11006 (OneCycleLR).</li>
+  </ol>
+</section>
+
+<section class="title-slide">
+  <span class="gem">◆</span>
+  <div class="title-main" style="font-size: 2.4em;">Thank you</div>
+  <div class="title-sub" style="font-size: 1.1em;">Questions, please.</div>
+  <div class="author-block" style="font-size: 0.7em; margin-top: 3em;">
+    Repository: <code>D:\MiniProject</code> &nbsp;·&nbsp;
+    Live demo: <code>http://127.0.0.1:5000</code> &nbsp;·&nbsp;
+    Code, data, and this slide deck reproducible from the source tree
+  </div>
+  <aside class="notes">
+    Anticipated questions:
+    1. "Why ResNet and not a Transformer?" — parameter budget and training data size.
+    2. "Why is the 25-mineral synthetic library hand-authored?" — quality over quantity for
+       the canonical anchor; expansion is on the future-work list.
+    3. "Have you compared against published Raman-CNN papers?" — same RRUFF subset, comparable
+       held-out accuracy; we have not run their code on our test set.
+    4. "What if the user uploads a non-Raman CSV?" — currently we still return a top-K with
+       low confidence; a rejection threshold is in future work.
+  </aside>
+</section>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.0.4/dist/reveal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.0.4/plugin/notes/notes.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.0.4/plugin/highlight/highlight.js"></script>
+<script>
+  Reveal.initialize({
+    hash: true,
+    slideNumber: 'c/t',
+    transition: 'fade',
+    transitionSpeed: 'fast',
+    backgroundTransition: 'fade',
+    controls: true,
+    progress: true,
+    center: false,
+    width: 1280,
+    height: 800,
+    margin: 0.04,
+    minScale: 0.4,
+    maxScale: 1.6,
+    plugins: [ RevealHighlight, RevealNotes ],
+  });
+</script>
+</body>
+</html>

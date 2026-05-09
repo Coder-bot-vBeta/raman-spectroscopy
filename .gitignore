@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env/
+
+# Logs (runtime-generated)
+*.log
+server.log
+training.log
+
+# Large model files (too large for GitHub — retrain using training/train_rf.py)
+models/rf_mineral.joblib
+
+# Raw RRUFF download cache (regenerate via database/rruff_parser.py)
+database/references/rruff/
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Claude Code project config
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# LaTeX build artifacts
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.nav
+*.out
+*.run.xml
+*.snm
+*.toc
+defense/presentation.log
+defense/presentation_20min.log
+defense/presentation_overleaf.log
+
+# Jupyter
+.ipynb_checkpoints/
+
+# pytest
+.pytest_cache/
