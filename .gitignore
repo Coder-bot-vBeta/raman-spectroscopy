@@ -21,9 +21,6 @@ env/
 server.log
 training.log
 
-# Large model files (too large for GitHub — retrain using training/train_rf.py)
-models/rf_mineral.joblib
-
 # Raw RRUFF download cache (regenerate via database/rruff_parser.py)
 database/references/rruff/
 
